@@ -50,9 +50,12 @@ python speak.py "path\to\book.epub" --output my_audiobook
 
 # List all available English voices
 python speak.py --list-voices
+
+# List voices for all languages
+python speak.py --list-voices --all-languages
 ```
 
-The default voice is `en-GB-RyanNeural` (British male). Run `--list-voices` to see all 47 available English voices across multiple accents and genders.
+The default voice is `en-GB-RyanNeural` (British male). Run `--list-voices` to browse available English voices, or add `--all-languages` to see all languages.
 
 ## Output
 
@@ -79,7 +82,7 @@ A selection of recommended voices:
 | `en-US-GuyNeural` | Male | American |
 | `en-AU-WilliamMultilingualNeural` | Male | Australian |
 
-Run `python speak.py --list-voices` for the full list.
+Run `python speak.py --list-voices` for the full English list, or `--list-voices --all-languages` for all languages.
 
 ## License
 

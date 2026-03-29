@@ -37,11 +37,17 @@ except ImportError as e:
 
 
 def extract_chapters(epub_path: str) -> list[tuple[str, str]]:
-    """Return list of (title, text) tuples for each chapter."""
+    """Return list of (title, text) tuples for each chapter in spine order."""
     book = epub.read_epub(epub_path)
     chapters = []
 
-    for item in book.get_items_of_type(ebooklib.ITEM_DOCUMENT):
+    # Index documents by id, then walk the spine for correct reading order
+    items_by_id = {item.id: item for item in book.get_items_of_type(ebooklib.ITEM_DOCUMENT)}
+
+    for item_id, _ in book.spine:
+        item = items_by_id.get(item_id)
+        if item is None:
+            continue
         soup = BeautifulSoup(item.get_content(), "lxml")
 
         # Try to get chapter title from heading tags
@@ -67,15 +73,19 @@ async def tts_chapter(text: str, output_path: str, voice: str) -> None:
     await communicate.save(output_path)
 
 
-async def list_voices() -> None:
+async def list_voices(all_languages: bool = False) -> None:
     voices = await edge_tts.list_voices()
-    en_voices = [v for v in voices if v["Locale"].startswith("en")]
+    if not all_languages:
+        voices = [v for v in voices if v["Locale"].startswith("en")]
     print(f"{'Name':<35} {'Gender':<8} {'Locale'}")
     print("-" * 60)
-    for v in sorted(en_voices, key=lambda x: x["ShortName"]):
+    for v in sorted(voices, key=lambda x: x["ShortName"]):
         print(f"{v['ShortName']:<35} {v['Gender']:<8} {v['Locale']}")
-    print(f"\nTotal English voices: {len(en_voices)}")
-    print("(Use --list-voices without filtering to see all languages)")
+    if all_languages:
+        print(f"\nTotal voices: {len(voices)}")
+    else:
+        print(f"\nTotal English voices: {len(voices)}")
+        print("Use --all-languages to list voices for all languages.")
 
 
 def build_m4b(output_dir: str, chapters: list[tuple[str, str]], mp3_paths: list[str], book_title: str) -> None:
@@ -107,11 +117,15 @@ def build_m4b(output_dir: str, chapters: list[tuple[str, str]], mp3_paths: list[
         except ValueError:
             return 0
 
+    def escape_ffmeta(s: str) -> str:
+        """Escape special characters for the FFMETADATA1 format."""
+        return re.sub(r'([=;#\\])', r'\\\1', s).replace('\n', '\\n')
+
     # Build FFMETADATA chapter block
     metadata_file = os.path.join(output_dir, "_metadata.txt")
     with open(metadata_file, "w", encoding="utf-8") as f:
         f.write(";FFMETADATA1\n")
-        f.write(f"title={book_title}\n\n")
+        f.write(f"title={escape_ffmeta(book_title)}\n\n")
         cursor = 0
         for (title, _), path in zip(chapters, mp3_paths):
             duration = get_duration_ms(path)
@@ -119,22 +133,22 @@ def build_m4b(output_dir: str, chapters: list[tuple[str, str]], mp3_paths: list[
             f.write("TIMEBASE=1/1000\n")
             f.write(f"START={cursor}\n")
             f.write(f"END={cursor + duration}\n")
-            f.write(f"title={title}\n\n")
+            f.write(f"title={escape_ffmeta(title)}\n\n")
             cursor += duration
 
     m4b_path = os.path.join(output_dir, f"{book_title}.m4b")
-    subprocess.run([
-        "ffmpeg", "-y",
-        "-f", "concat", "-safe", "0", "-i", concat_file,
-        "-i", metadata_file,
-        "-map_metadata", "1",
-        "-c:a", "aac", "-b:a", "64k",
-        m4b_path
-    ], check=True)
-
-    # Clean up temp files
-    os.remove(concat_file)
-    os.remove(metadata_file)
+    try:
+        subprocess.run([
+            "ffmpeg", "-y",
+            "-f", "concat", "-safe", "0", "-i", concat_file,
+            "-i", metadata_file,
+            "-map_metadata", "1",
+            "-c:a", "aac", "-b:a", "64k",
+            m4b_path
+        ], check=True)
+    finally:
+        os.remove(concat_file)
+        os.remove(metadata_file)
 
     size_mb = os.path.getsize(m4b_path) / (1024 * 1024)
     print(f"M4B saved: {m4b_path} ({size_mb:.1f} MB)")
@@ -162,6 +176,8 @@ async def convert(epub_path: str, output_dir: str, voice: str, m4b: bool) -> Non
             print(f"[{i}/{total}] {title[:60]} (skipped, already exists, {size_kb} KB)")
         else:
             print(f"[{i}/{total}] {title[:60]}")
+            if len(text) > 5000:
+                print(f"  Warning: chapter is {len(text):,} chars — long chapters may be truncated by Edge TTS.")
             await tts_chapter(text, out_path, voice)
             size_kb = os.path.getsize(out_path) // 1024
             print(f"        -> {filename} ({size_kb} KB)")
@@ -175,7 +191,7 @@ async def convert(epub_path: str, output_dir: str, voice: str, m4b: bool) -> Non
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Convert EPUB to audiobook MP3s")
+    parser = argparse.ArgumentParser(description="Speak EPUB: convert an EPUB file to an audiobook")
     parser.add_argument("epub", nargs="?", help="Path to the EPUB file")
     parser.add_argument(
         "--voice",
@@ -197,10 +213,15 @@ def main():
         action="store_true",
         help="List available English TTS voices and exit",
     )
+    parser.add_argument(
+        "--all-languages",
+        action="store_true",
+        help="With --list-voices, show voices for all languages (not just English)",
+    )
     args = parser.parse_args()
 
     if args.list_voices:
-        asyncio.run(list_voices())
+        asyncio.run(list_voices(all_languages=args.all_languages))
         return
 
     if not args.epub:

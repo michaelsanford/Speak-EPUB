@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.venv/
+*.egg-info/
+
+# Output
+*_audiobook/
+*.mp3
+*.m4b
+
+# FFmpeg temp files
+_concat.txt
+_metadata.txt
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

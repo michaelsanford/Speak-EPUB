@@ -8,6 +8,7 @@ Usage:
     python speak.py "book.epub" --voice en-US-AriaNeural
     python speak.py "book.epub" --voice en-GB-SoniaNeural --output my_audiobook
     python speak.py "book.epub" --m4b
+    python speak.py "book.epub" --m4a
     python speak.py --list-voices
 
 Requirements:
@@ -88,14 +89,14 @@ async def list_voices(all_languages: bool = False) -> None:
         print("Use --all-languages to list voices for all languages.")
 
 
-def build_m4b(output_dir: str, chapters: list[tuple[str, str]], mp3_paths: list[str], book_title: str) -> None:
-    """Combine chapter MP3s into a single M4B with chapter markers using FFmpeg."""
+def build_m4b(output_dir: str, chapters: list[tuple[str, str]], mp3_paths: list[str], book_title: str, ext: str = "m4b") -> None:
+    """Combine chapter MP3s into a single M4B/M4A with chapter markers using FFmpeg."""
     if not shutil.which("ffmpeg"):
-        print("\nWarning: ffmpeg not found on PATH — skipping M4B creation.")
+        print(f"\nWarning: ffmpeg not found on PATH — skipping {ext.upper()} creation.")
         print("Install FFmpeg from https://ffmpeg.org/download.html and add it to PATH.")
         return
 
-    print("\nBuilding M4B...")
+    print(f"\nBuilding {ext.upper()}...")
 
     # Write concat list
     concat_file = os.path.join(output_dir, "_concat.txt")
@@ -136,7 +137,7 @@ def build_m4b(output_dir: str, chapters: list[tuple[str, str]], mp3_paths: list[
             f.write(f"title={escape_ffmeta(title)}\n\n")
             cursor += duration
 
-    m4b_path = os.path.join(output_dir, f"{book_title}.m4b")
+    out_path = os.path.join(output_dir, f"{book_title}.{ext}")
     try:
         subprocess.run([
             "ffmpeg", "-y",
@@ -144,17 +145,17 @@ def build_m4b(output_dir: str, chapters: list[tuple[str, str]], mp3_paths: list[
             "-i", metadata_file,
             "-map_metadata", "1",
             "-c:a", "aac", "-b:a", "64k",
-            m4b_path
+            out_path
         ], check=True)
     finally:
         os.remove(concat_file)
         os.remove(metadata_file)
 
-    size_mb = os.path.getsize(m4b_path) / (1024 * 1024)
-    print(f"M4B saved: {m4b_path} ({size_mb:.1f} MB)")
+    size_mb = os.path.getsize(out_path) / (1024 * 1024)
+    print(f"{ext.upper()} saved: {out_path} ({size_mb:.1f} MB)")
 
 
-async def convert(epub_path: str, output_dir: str, voice: str, m4b: bool) -> None:
+async def convert(epub_path: str, output_dir: str, voice: str, m4b: bool, m4a: bool) -> None:
     chapters = extract_chapters(epub_path)
     if not chapters:
         print("No text chapters found in EPUB.")
@@ -185,9 +186,10 @@ async def convert(epub_path: str, output_dir: str, voice: str, m4b: bool) -> Non
 
     print(f"\nDone! {total} MP3 files saved to: {output_dir}")
 
-    if m4b:
+    if m4b or m4a:
         book_title = re.sub(r'[\\/:*?"<>|]', "_", Path(epub_path).stem)
-        build_m4b(output_dir, chapters, mp3_paths, book_title)
+        ext = "m4a" if m4a else "m4b"
+        build_m4b(output_dir, chapters, mp3_paths, book_title, ext)
 
 
 def main():
@@ -207,6 +209,11 @@ def main():
         "--m4b",
         action="store_true",
         help="Combine chapter MP3s into a single M4B audiobook file (requires ffmpeg)",
+    )
+    parser.add_argument(
+        "--m4a",
+        action="store_true",
+        help="Combine chapter MP3s into a single M4A audiobook file (requires ffmpeg)",
     )
     parser.add_argument(
         "--list-voices",
@@ -235,7 +242,7 @@ def main():
 
     output_dir = args.output or (epub_path.stem + "_audiobook")
 
-    asyncio.run(convert(str(epub_path), output_dir, args.voice, args.m4b))
+    asyncio.run(convert(str(epub_path), output_dir, args.voice, args.m4b, args.m4a))
 
 
 if __name__ == "__main__":

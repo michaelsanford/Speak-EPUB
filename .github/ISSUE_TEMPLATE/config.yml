@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question
+    url: https://github.com/michaelsanford/Speak-EPUB/discussions
+    about: For usage questions, use Discussions rather than opening an issue.

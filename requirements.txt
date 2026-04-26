@@ -7,7 +7,7 @@ certifi==2026.2.25
 EbookLib==0.20
 edge-tts==7.2.8
 frozenlist==1.8.0
-idna==3.11
+idna==3.13
 lxml==6.0.2
 multidict==6.7.1
 propcache==0.4.1

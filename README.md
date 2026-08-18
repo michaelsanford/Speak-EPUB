@@ -21,15 +21,16 @@ Clone or download the project, then follow the steps for your OS.
 ### Windows
 
 ```powershell
-cd speak-epub
+cd Speak-EPUB
 
-python -m venv venv
-& .\venv\Scripts\Activate.ps1
+python -m venv .venv
+& .\.venv\Scripts\Activate.ps1
 
 pip install -r requirements.txt
 ```
 
 **For M4B/M4A output**, install FFmpeg:
+
 ```powershell
 winget install ffmpeg
 ```
@@ -48,6 +49,7 @@ pip install -r requirements.txt
 ```
 
 **For M4B/M4A output**, install FFmpeg via Homebrew:
+
 ```bash
 brew install ffmpeg
 ```
@@ -66,6 +68,7 @@ pip install -r requirements.txt
 ```
 
 **For M4B/M4A output**, install FFmpeg via your package manager:
+
 ```bash
 # Debian/Ubuntu
 sudo apt install ffmpeg

@@ -8,7 +8,7 @@ EbookLib==0.20
 edge-tts==7.2.8
 frozenlist==1.8.0
 idna==3.19
-lxml==6.1.1
+lxml==6.1.2
 multidict==6.7.1
 propcache==0.5.2
 six==1.17.0

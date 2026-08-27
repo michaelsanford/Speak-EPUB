@@ -31,6 +31,8 @@
 .EXAMPLE
     ./scripts/Invoke-SnykScan.ps1 -SeverityThreshold medium -Sarif
 #>
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '',
+    Justification = 'Console-facing script: the colourised status output is the point, and it is never piped into anything.')]
 [CmdletBinding()]
 param(
     [ValidateSet('low', 'medium', 'high', 'critical')]

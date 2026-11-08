@@ -11,7 +11,7 @@ Convert any EPUB file into a spoken-word audiobook using Microsoft Edge's free n
 
 ## Requirements
 
-- Python 3.10+
+- Python 3.11+
 - FFmpeg on your PATH (only needed for `--m4b` / `--m4a`)
 
 ## Installation
